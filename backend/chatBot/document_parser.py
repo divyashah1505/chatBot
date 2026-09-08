@@ -32,8 +32,10 @@ except ImportError:
 _OCR_ENGINE = None
 
 def get_ocr_engine():
-    """Lazily initializes RapidOCR neural engine for 100% offline text extraction."""
+    """Lazily initializes RapidOCR neural engine only when available, enabled, and outside low-memory cloud hosts."""
     global _OCR_ENGINE
+    if os.getenv("RENDER") or os.getenv("DISABLE_OCR", "0") == "1":
+        return None
     if _OCR_ENGINE is None:
         try:
             from rapidocr_onnxruntime import RapidOCR
@@ -46,6 +48,10 @@ def get_ocr_engine():
 
 def extract_ocr_text_from_image(pil_img: Image.Image) -> str:
     """Runs local neural OCR on a PIL image with spatial line clustering and memory-safe downsampling."""
+    engine = get_ocr_engine()
+    if not engine:
+        return ""
+
     # 1. Skip tiny icons, stamps, or slices (< 100px) to conserve RAM
     w, h = pil_img.size
     if w < 100 or h < 100:
@@ -58,10 +64,6 @@ def extract_ocr_text_from_image(pil_img: Image.Image) -> str:
         scale = MAX_DIM / float(max(w, h))
         new_w, new_h = max(1, int(w * scale)), max(1, int(h * scale))
         pil_img = pil_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
-
-    engine = get_ocr_engine()
-    if not engine:
-        return ""
     try:
         # Convert to RGB numpy array
         if pil_img.mode != "RGB":
@@ -124,43 +126,76 @@ def extract_ocr_text_from_image(pil_img: Image.Image) -> str:
 
 
 def extract_raw_pdf_streams(file_bytes: bytes) -> str:
-    """Pure-Python fallback to recover readable text strings from raw PDF streams."""
+    """Pure-Python zlib stream decompressor to recover readable text strings from raw PDF streams."""
+    import zlib
+    found_chunks = []
     try:
-        found_chunks = []
-        tj_simple = re.compile(rb'\(([^()]{2,500})\)\s*(?:Tj|\'|")', re.DOTALL)
-        for m in tj_simple.finditer(file_bytes):
+        stream_pattern = re.compile(rb'stream[\r\n]+(.*?)[\r\n]+endstream', re.DOTALL)
+        for m in stream_pattern.finditer(file_bytes):
+            raw_stream = m.group(1)
+            decomp = None
             try:
-                txt = m.group(1).decode("latin-1", errors="ignore")
-                clean = re.sub(r'\\([0-9]{3}|.)', r'\1', txt).strip()
-                if clean and re.search(r'[a-zA-Z0-9]{2,}', clean):
-                    found_chunks.append(clean)
+                decomp = zlib.decompress(raw_stream)
             except Exception:
-                continue
+                try:
+                    decomp = zlib.decompress(raw_stream, -15)
+                except Exception:
+                    decomp = raw_stream
 
-        tj_array = re.compile(rb'\[(.*?)\]\s*TJ', re.DOTALL)
-        for m in tj_array.finditer(file_bytes):
-            try:
-                inner = re.findall(rb'\(([^()]{2,500})\)', m.group(1))
-                line_parts = []
-                for b in inner:
-                    txt = b.decode("latin-1", errors="ignore")
-                    clean = re.sub(r'\\([0-9]{3}|.)', r'\1', txt).strip()
-                    if clean and re.search(r'[a-zA-Z0-9]', clean):
-                        line_parts.append(clean)
-                if line_parts:
-                    found_chunks.append(" ".join(line_parts))
-            except Exception:
-                continue
+            if decomp:
+                # Extract text inside ( ... ) Tj, ', "
+                tj_simple = re.findall(rb'\(([^()]{2,1000})\)\s*(?:Tj|\'|")', decomp, re.DOTALL)
+                for item in tj_simple:
+                    try:
+                        txt = item.decode("latin-1", errors="ignore")
+                        clean = re.sub(r'\\([0-9]{3}|.)', r'\1', txt).strip()
+                        if clean and re.search(r'[a-zA-Z0-9]{2,}', clean):
+                            found_chunks.append(clean)
+                    except Exception:
+                        continue
+
+                # Extract text inside [ ... ] TJ
+                tj_array = re.findall(rb'\[(.*?)\]\s*TJ', decomp, re.DOTALL)
+                for arr in tj_array:
+                    try:
+                        inner = re.findall(rb'\(([^()]{1,500})\)', arr)
+                        line_parts = []
+                        for b in inner:
+                            txt = b.decode("latin-1", errors="ignore")
+                            clean = re.sub(r'\\([0-9]{3}|.)', r'\1', txt).strip()
+                            if clean and re.search(r'[a-zA-Z0-9]', clean):
+                                line_parts.append(clean)
+                        if line_parts:
+                            found_chunks.append(" ".join(line_parts))
+                    except Exception:
+                        continue
 
         if found_chunks and len(found_chunks) >= 2:
             return "\n".join(found_chunks).strip()
     except Exception:
         pass
+
+    # Fallback to readable ASCII character sequences
+    try:
+        clean_ascii = re.findall(rb'[\x20-\x7E\r\n]{4,}', file_bytes)
+        meaningful = []
+        for b in clean_ascii:
+            try:
+                s = b.decode("latin-1", errors="ignore").strip()
+                if not s.startswith(("%PDF", "xref", "trailer", "startxref", "<<", ">>")) and len(re.findall(r"[a-zA-Z0-9]", s)) >= 5:
+                    meaningful.append(s)
+            except Exception:
+                pass
+        if meaningful and len(meaningful) >= 3:
+            return "\n".join(meaningful[:500]).strip()
+    except Exception:
+        pass
+
     return ""
 
 
 def extract_text_from_pdf(file_bytes: bytes) -> str:
-    """Extracts all text from PDF bytes across all pages with page-level structural demarcation and OCR fallback."""
+    """Extracts all text from PDF bytes across all pages with page-level structural demarcation and memory-safe fallbacks."""
     if not PdfReader:
         return extract_raw_pdf_streams(file_bytes)
 
@@ -228,13 +263,54 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
             except Exception:
                 pass
 
+            # Extract Form XObjects (Common in insurance schedules, tables, certificates)
+            try:
+                if "/Resources" in page and "/XObject" in page["/Resources"]:
+                    xobjects = page["/Resources"]["/XObject"]
+                    if hasattr(xobjects, "get_object"):
+                        xobjects = xobjects.get_object()
+                    if isinstance(xobjects, dict):
+                        for x_key, x_obj in xobjects.items():
+                            x_resolved = x_obj.get_object() if hasattr(x_obj, "get_object") else x_obj
+                            if isinstance(x_resolved, dict) and x_resolved.get("/Subtype") == "/Form":
+                                if hasattr(page, "extract_xform_text"):
+                                    x_text = page.extract_xform_text(x_resolved)
+                                    if x_text and x_text.strip():
+                                        clean_lines.append(x_text.strip())
+            except Exception:
+                pass
+
             extracted_page_content = "\n".join(clean_lines).strip()
 
-            # If page text is empty or very sparse (< 40 chars), check for scanned images on the page
-            if len(extracted_page_content) < 40 and hasattr(page, "images") and len(page.images) > 0:
+            # Content stream fallback if text is still very sparse
+            if len(extracted_page_content) < 30:
+                try:
+                    contents = page.get_contents()
+                    if contents:
+                        c_data = contents.get_data() if hasattr(contents, "get_data") else None
+                        if c_data:
+                            import zlib
+                            try:
+                                decomp = zlib.decompress(c_data)
+                            except Exception:
+                                decomp = c_data
+                            t_parts = re.findall(rb'\(([^()]{2,500})\)\s*(?:Tj|\'|")', decomp)
+                            for tp in t_parts:
+                                try:
+                                    s = tp.decode("latin-1", errors="ignore").strip()
+                                    if s and len(s) > 2:
+                                        clean_lines.append(s)
+                                except Exception:
+                                    pass
+                            extracted_page_content = "\n".join(clean_lines).strip()
+                except Exception:
+                    pass
+
+            # OCR fallback ONLY if engine is actively available (never runs on low-memory Render)
+            ocr_engine = get_ocr_engine()
+            if ocr_engine and len(extracted_page_content) < 40 and hasattr(page, "images"):
                 ocr_page_parts = []
                 try:
-                    # Filter for substantial images (> 5KB) and sort to pick only the largest primary page scan
                     img_list = [img for img in page.images if hasattr(img, "data") and len(img.data) > 5000]
                     img_list.sort(key=lambda img: len(img.data), reverse=True)
                     for img_obj in img_list[:1]:

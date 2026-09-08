@@ -139,59 +139,74 @@ async def summarize_pdf_endpoint(
     file: UploadFile = File(...)
 ):
     """Upload any document or handwritten prescription image (PDF, Image, Word, Excel, CSV, Text) + custom user prompt and get a verified answer with persistent memory."""
-    ext = "." + file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
-    if ext not in ALLOWED_EXTENSIONS:
-        raise HTTPException(status_code=400, detail=f"Unsupported file format. Supported: {', '.join(ALLOWED_EXTENSIONS)}")
-
-    file_bytes = await file.read()
-    user_prompt = prompt.strip() if isinstance(prompt, str) and prompt.strip() else "Summarize this document."
-    user_id_val = str(user_id) if isinstance(user_id, str) and user_id else "default_user"
-    session_id_val = str(session_id) if isinstance(session_id, str) and session_id else None
-
-    # Check if uploaded file is a prescription image
-    if ext in IMAGE_EXTENSIONS or any(k in user_prompt.lower() for k in ["prescription", "medicine", "doctor", "rx", "dosage"]):
-        prescription_result = await asyncio.to_thread(
-            local_prescription_analyzer.analyze_prescription, file_bytes, file.filename, user_prompt
-        )
-        summary = prescription_result.get("reply", "")
-        faqs = prescription_result.get("faqs", [])
-    else:
-        # Standard Universal Document Summarization & Vector RAG with Session binding
-        summary = await asyncio.to_thread(
-            generate_pdf_summary_with_llama, file_bytes, file.filename, user_prompt, user_id_val, session_id_val
-        )
-        doc_hash = doc_memory.compute_document_hash(file_bytes, file.filename)
-        entry = doc_memory.get_document(doc_hash)
-        faqs = entry.get_faqs() if entry else []
-
-    # Create or reuse chat session if available (offline-safe)
     try:
-        if not session_id_val:
-            title = f"Rx: {file.filename[:25]}" if ext in IMAGE_EXTENSIONS else f"Doc: {file.filename[:25]}"
-            session_id_val = await asyncio.to_thread(create_session, user_id_val, title)
+        ext = "." + file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+        if ext not in ALLOWED_EXTENSIONS:
+            return {
+                "reply": f"⚠️ Unsupported file format `{ext}`. Supported formats: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
+                "session_id": session_id or "local_session",
+                "filename": file.filename,
+                "faqs": []
+            }
 
-        # Bind session to document in doc_memory
-        doc_hash = doc_memory.compute_document_hash(file_bytes, file.filename)
-        if session_id_val:
-            doc_memory.bind_session_document(session_id_val, doc_hash)
-        doc_memory.bind_user_document(user_id_val, doc_hash)
+        file_bytes = await file.read()
+        user_prompt = prompt.strip() if isinstance(prompt, str) and prompt.strip() else "Summarize this document."
+        user_id_val = str(user_id) if isinstance(user_id, str) and user_id else "default_user"
+        session_id_val = str(session_id) if isinstance(session_id, str) and session_id else None
 
-        user_msg = f"📎 {file.filename} — {user_prompt}"
-        if session_id_val:
-            await asyncio.gather(
-                asyncio.to_thread(add_message_to_session, session_id_val, "user", user_msg),
-                asyncio.to_thread(add_message_to_session, session_id_val, "bot", summary),
+        # Check if uploaded file is a prescription image
+        if ext in IMAGE_EXTENSIONS or any(k in user_prompt.lower() for k in ["prescription", "medicine", "doctor", "rx", "dosage"]):
+            prescription_result = await asyncio.to_thread(
+                local_prescription_analyzer.analyze_prescription, file_bytes, file.filename, user_prompt
             )
-    except Exception as e:
-        print(f"[Doc] Session/message save skipped in offline mode: {e}")
-        session_id_val = session_id_val or "local_session"
+            summary = prescription_result.get("reply", "")
+            faqs = prescription_result.get("faqs", [])
+        else:
+            # Standard Universal Document Summarization & Vector RAG with Session binding
+            summary = await asyncio.to_thread(
+                generate_pdf_summary_with_llama, file_bytes, file.filename, user_prompt, user_id_val, session_id_val
+            )
+            doc_hash = doc_memory.compute_document_hash(file_bytes, file.filename)
+            entry = doc_memory.get_document(doc_hash)
+            faqs = entry.get_faqs() if entry else []
 
-    return {
-        "reply": summary,
-        "session_id": session_id_val or "local_session",
-        "filename": file.filename,
-        "faqs": faqs
-    }
+        # Create or reuse chat session if available (offline-safe)
+        try:
+            if not session_id_val:
+                title = f"Rx: {file.filename[:25]}" if ext in IMAGE_EXTENSIONS else f"Doc: {file.filename[:25]}"
+                session_id_val = await asyncio.to_thread(create_session, user_id_val, title)
+
+            # Bind session to document in doc_memory
+            doc_hash = doc_memory.compute_document_hash(file_bytes, file.filename)
+            if session_id_val:
+                doc_memory.bind_session_document(session_id_val, doc_hash)
+            doc_memory.bind_user_document(user_id_val, doc_hash)
+
+            user_msg = f"📎 {file.filename} — {user_prompt}"
+            if session_id_val:
+                await asyncio.gather(
+                    asyncio.to_thread(add_message_to_session, session_id_val, "user", user_msg),
+                    asyncio.to_thread(add_message_to_session, session_id_val, "bot", summary),
+                )
+        except Exception as e:
+            print(f"[Doc] Session/message save skipped in offline mode: {e}")
+            session_id_val = session_id_val or "local_session"
+
+        return {
+            "reply": summary,
+            "session_id": session_id_val or "local_session",
+            "filename": file.filename,
+            "faqs": faqs
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {
+            "reply": f"⚠️ An error occurred while processing **{file.filename}**: {str(e)}",
+            "session_id": session_id or "local_session",
+            "filename": file.filename,
+            "faqs": []
+        }
 
 
 

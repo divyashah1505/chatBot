@@ -31,13 +31,21 @@ except Exception as e:
 
 
 
-# RapidOCR Local Neural Engine
-try:
-    from rapidocr_onnxruntime import RapidOCR
-    _rapid_ocr_engine = RapidOCR()
-except Exception as e:
-    print(f"[PrescriptionAnalyzer] RapidOCR initialization note: {e}")
-    _rapid_ocr_engine = None
+_rapid_ocr_engine = None
+
+def get_rapid_ocr_engine():
+    """Lazily initializes RapidOCR neural engine only when needed and safe."""
+    global _rapid_ocr_engine
+    if os.getenv("RENDER") or os.getenv("DISABLE_OCR", "0") == "1":
+        return None
+    if _rapid_ocr_engine is None:
+        try:
+            from rapidocr_onnxruntime import RapidOCR
+            _rapid_ocr_engine = RapidOCR()
+        except Exception as e:
+            print(f"[PrescriptionAnalyzer] RapidOCR initialization note: {e}")
+            _rapid_ocr_engine = False
+    return _rapid_ocr_engine if _rapid_ocr_engine is not False else None
 
 
 # =====================================================================
@@ -654,9 +662,10 @@ def multi_pass_image_ocr(image_bytes: bytes) -> Tuple[str, List[str], Dict[str, 
 
         passes = [norm_rgb, enhanced_rgb, raw_np, unsharp_rgb]
 
-        for img_pass in passes:
-            if _rapid_ocr_engine is not None:
-                results, _ = _rapid_ocr_engine(img_pass)
+        engine = get_rapid_ocr_engine()
+        if engine is not None:
+            for img_pass in passes:
+                results, _ = engine(img_pass)
                 if results:
                     pass_lines = [str(r[1]).strip() for r in results if len(r) >= 2 and str(r[1]).strip()]
                     if len(pass_lines) > len(all_lines):
