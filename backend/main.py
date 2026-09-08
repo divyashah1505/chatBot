@@ -123,6 +123,7 @@ from chatBot.prescription_analyzer import local_prescription_analyzer
 
 ALLOWED_EXTENSIONS = {
     ".pdf", ".docx", ".doc", ".xlsx", ".xls", ".csv", ".txt", ".md", ".json", ".log", ".xml",
+    ".rtf", ".odt", ".ods", ".yaml", ".yml", ".html", ".htm", ".tsv", ".ini", ".conf", ".sql",
     ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff"
 }
 

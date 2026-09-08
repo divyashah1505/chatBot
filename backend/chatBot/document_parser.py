@@ -261,17 +261,39 @@ def extract_text_from_docx(file_bytes: bytes) -> str:
         except Exception as e:
             print(f"[DocParser] python-docx read error: {e}")
 
-    # Method 2: Zero-dependency XML parsing fallback
+    # Method 2: Zero-dependency XML parsing fallback (standard DOCX zip)
     try:
         with zipfile.ZipFile(io.BytesIO(file_bytes)) as docx_zip:
             xml_content = docx_zip.read("word/document.xml")
             tree = ET.fromstring(xml_content)
             namespace = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
             text_nodes = tree.findall(".//w:t", namespace)
-            return " ".join(node.text for node in text_nodes if node.text)
+            text_result = " ".join(node.text for node in text_nodes if node.text)
+            if text_result and len(text_result.strip()) > 20:
+                return text_result.strip()
     except Exception as e:
-        print(f"[DocParser] DOCX XML fallback error: {e}")
-        return ""
+        pass
+
+    # Method 3: Fallback for older binary .doc or RTF documents
+    try:
+        if file_bytes.startswith(b"{\\rtf"):
+            raw_rtf = file_bytes.decode("latin-1", errors="ignore")
+            clean_rtf = re.sub(r"\\[a-z0-9\-]+ ?", " ", raw_rtf)
+            clean_rtf = re.sub(r"[{}]", "", clean_rtf)
+            return re.sub(r"\s+", " ", clean_rtf).strip()
+
+        strings = re.findall(rb"[\x20-\x7E\s]{4,}", file_bytes)
+        clean_doc = []
+        for s in strings:
+            decoded = s.decode("latin-1", errors="ignore").strip()
+            if len(decoded) > 6 and not decoded.startswith("Microsoft"):
+                clean_doc.append(decoded)
+        if clean_doc:
+            return "\n".join(clean_doc).strip()
+    except Exception:
+        pass
+
+    return ""
 
 
 def extract_text_from_excel(file_bytes: bytes, filename: str) -> str:
