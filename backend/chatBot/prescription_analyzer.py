@@ -20,7 +20,16 @@ import re
 from typing import Dict, Any, List, Optional, Tuple
 from PIL import Image, ImageEnhance, ImageFilter
 import numpy as np
-import cv2
+
+
+# OpenCV optional local preprocessing
+try:
+    import cv2
+except Exception as e:
+    cv2 = None
+
+
+
 
 # RapidOCR Local Neural Engine
 try:

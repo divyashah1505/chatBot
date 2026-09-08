@@ -10,7 +10,10 @@ import json
 import socket
 import urllib.request
 from typing import Dict, Any, List, Optional, Tuple
-from openai import OpenAI
+try:
+    from openai import OpenAI
+except ImportError:
+    OpenAI = None
 
 # Provider connection configurations
 OLLAMA_HOST = "127.0.0.1"
