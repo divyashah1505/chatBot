@@ -212,15 +212,13 @@ const Icons = {
   )
 };
 
-// Curated Designer Themes
+// Curated 5 Designer Themes
 const THEMES = [
-  { id: "mocha", name: "Mocha & Cream", tag: "Brown & White", desc: "Warm porcelain white with rich chocolate espresso", icon: "☕", color: "#6d422a" },
-  { id: "espresso", name: "Velvet Espresso", tag: "Deep Brown", desc: "Roasted dark walnut with crisp white contrast", icon: "🤎", color: "#b06e40" },
-  { id: "daylight", name: "Pristine Daylight", tag: "Light Studio", desc: "Clean porcelain studio with crisp contrast", icon: "☀️", color: "#0284c7" },
-  { id: "obsidian", name: "Obsidian Aurora", tag: "Classic Dark", desc: "Velvet onyx with cyan-indigo aurora glow", icon: "✨", color: "#3b82f6" },
+  { id: "obsidian", name: "Obsidian Aurora", tag: "Best Theme", desc: "Velvet onyx with cyan-indigo aurora glow", icon: "✨", color: "#3b82f6" },
   { id: "sapphire", name: "Midnight Sapphire", tag: "Deep Navy", desc: "Oceanic navy with royal sapphire accents", icon: "🌌", color: "#2563eb" },
   { id: "emerald", name: "Cyber Emerald", tag: "High-Tech", desc: "Deep carbon with luminous cyber emerald", icon: "⚡", color: "#10b981" },
-  { id: "amethyst", name: "Nebula Amethyst", tag: "Cosmic", desc: "Royal twilight with vibrant violet & lavender", icon: "🔮", color: "#8b5cf6" }
+  { id: "amethyst", name: "Nebula Amethyst", tag: "Cosmic", desc: "Royal twilight with vibrant violet & lavender", icon: "🔮", color: "#8b5cf6" },
+  { id: "daylight", name: "Pristine Daylight", tag: "Light Studio", desc: "Clean porcelain studio with crisp contrast", icon: "☀️", color: "#0284c7" }
 ];
 
 // Interactive Code Block with Language Tag and Copy Code Action
@@ -351,15 +349,8 @@ function App() {
   const [currentSessionId, setCurrentSessionId] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  // Theme & Model Studio state (Default: Mocha & Cream - Brown & White)
-  const [currentTheme, setCurrentTheme] = useState(() => {
-    const saved = localStorage.getItem("divya_theme");
-    if (!saved || saved === "obsidian") {
-      localStorage.setItem("divya_theme", "mocha");
-      return "mocha";
-    }
-    return saved;
-  });
+  // Theme & Model Studio state
+  const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem("divya_theme") || "obsidian");
   const [isModelModalOpen, setIsModelModalOpen] = useState(false);
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
   const [pingLatency, setPingLatency] = useState(null);
@@ -687,8 +678,8 @@ function App() {
               </div>
             )}
           </div>
-          <button 
-            className="sidebar-toggle-btn" 
+          <button
+            className="sidebar-toggle-btn"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             title={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
           >
@@ -706,8 +697,8 @@ function App() {
         <div className="conversations-scroll">
           {isSidebarOpen && <div className="section-label">Chat History</div>}
           {sessions.map((s) => (
-            <div 
-              key={s.id} 
+            <div
+              key={s.id}
               className={`conv-item ${currentSessionId === s.id ? "active" : ""}`}
               onClick={() => loadSession(s.id)}
               title={s.title}
@@ -717,8 +708,8 @@ function App() {
               </span>
               {isSidebarOpen && <span className="conv-title">{s.title}</span>}
               {isSidebarOpen && (
-                <button 
-                  className="conv-del-btn" 
+                <button
+                  className="conv-del-btn"
                   onClick={(e) => handleDeleteSession(e, s.id)}
                   title="Delete conversation"
                 >
@@ -756,8 +747,8 @@ function App() {
         <header className="workspace-header">
           <div className="header-breadcrumbs">
             {!isSidebarOpen && (
-              <button 
-                className="mobile-expand-btn" 
+              <button
+                className="mobile-expand-btn"
                 onClick={() => setIsSidebarOpen(true)}
                 title="Open Sidebar"
               >
@@ -824,8 +815,8 @@ function App() {
               <span className="model-btn-provider">
                 {modelStatus?.is_llm_online
                   ? (modelStatus.active_provider === "gemini"
-                      ? "✨ Google Gemini"
-                      : modelStatus.active_provider === "ollama" ? "🦙 Ollama" : "🤖 LM Studio")
+                    ? "✨ Google Gemini"
+                    : modelStatus.active_provider === "ollama" ? "🦙 Ollama" : "🤖 LM Studio")
                   : "⚡ Local Neural RAG"}
               </span>
               <span className="model-chip-name">
@@ -853,8 +844,8 @@ function App() {
               </div>
 
               <div className="bento-container">
-                <div 
-                  className="bento-item" 
+                <div
+                  className="bento-item"
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <div className="bento-top">
@@ -869,8 +860,8 @@ function App() {
                   <p className="bento-desc">Upload doctor handwritten prescriptions (Images/PDF) to predict medicines, verify dosages, and correct typos.</p>
                 </div>
 
-                <div 
-                  className="bento-item" 
+                <div
+                  className="bento-item"
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <div className="bento-top">
@@ -885,8 +876,8 @@ function App() {
                   <p className="bento-desc">Upload health insurance, agreements, or reports for instant schedule & coverage extraction.</p>
                 </div>
 
-                <div 
-                  className="bento-item" 
+                <div
+                  className="bento-item"
                   onClick={() => sendMessage("I want AI ML best candidates in their skills and experience wise")}
                 >
                   <div className="bento-top">
@@ -901,8 +892,8 @@ function App() {
                   <p className="bento-desc">Search top talent in AI/ML, Full Stack, and evaluate resumes.</p>
                 </div>
 
-                <div 
-                  className="bento-item" 
+                <div
+                  className="bento-item"
                   onClick={() => sendMessage("Tell me about MCA degree eligibility, syllabus, and fees")}
                 >
                   <div className="bento-top">
@@ -931,8 +922,8 @@ function App() {
                     </div>
                     {msg.sender === "bot" && (
                       <div className="stream-actions">
-                        <button 
-                          className="action-copy-btn" 
+                        <button
+                          className="action-copy-btn"
                           onClick={() => copyToClipboard(msg.text, index)}
                           title="Copy response"
                         >
@@ -1021,7 +1012,7 @@ function App() {
                   <span className="doc-faq-active-badge">
                     📄 Document FAQ Mode: <strong>{activeDocName || "Uploaded Document"}</strong>
                   </span>
-                  <button 
+                  <button
                     className="doc-faq-close-btn"
                     onClick={() => { setDocFaqs([]); setActiveDocName(null); }}
                     title="Exit Document FAQ Mode"
@@ -1031,7 +1022,7 @@ function App() {
                 </div>
                 <div className="doc-faq-chips-grid">
                   {docFaqs.map((faq, idx) => (
-                    <button 
+                    <button
                       key={idx}
                       className="faq-chip-item"
                       onClick={() => sendMessage(faq.question)}
@@ -1056,7 +1047,7 @@ function App() {
                       <span className="attachment-size">Ready for instant vector analysis ({selectedDoc.size})</span>
                     </div>
                   </div>
-                  <button 
+                  <button
                     className="attachment-close-btn"
                     onClick={() => { setSelectedDoc(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
                     title="Remove attachment"
@@ -1066,25 +1057,25 @@ function App() {
                 </div>
 
                 <div className="quick-doc-prompts">
-                  <button 
+                  <button
                     className="doc-prompt-pill"
                     onClick={() => sendMessage("Analyze doctor's prescription and verify all medicines, dosages, and timings")}
                   >
                     🩺 Analyze & Verify Prescription
                   </button>
-                  <button 
+                  <button
                     className="doc-prompt-pill"
                     onClick={() => sendMessage("What is the exact medicine schedule, dosages, and before/after food timings?")}
                   >
                     💊 Medicine Schedule & Timings
                   </button>
-                  <button 
+                  <button
                     className="doc-prompt-pill"
                     onClick={() => sendMessage("Check for handwriting spelling corrections, antibiotic courses, and safety warnings")}
                   >
                     🔍 Spellings & Safety Warnings
                   </button>
-                  <button 
+                  <button
                     className="doc-prompt-pill"
                     onClick={() => sendMessage("What are the key coverage benefits and limits?")}
                   >
@@ -1103,7 +1094,7 @@ function App() {
                 style={{ display: "none" }}
                 onChange={selectDoc}
               />
-              <button 
+              <button
                 className="composer-action-btn"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={loading}
@@ -1125,7 +1116,7 @@ function App() {
                 onKeyDown={handleKeyDown}
               />
 
-              <button 
+              <button
                 className={`composer-action-btn ${isListening ? "active-mic" : ""}`}
                 onClick={toggleListening}
                 title="Voice typing"
@@ -1133,7 +1124,7 @@ function App() {
                 <Icons.Mic />
               </button>
 
-              <button 
+              <button
                 className="composer-send-btn"
                 onClick={() => sendMessage()}
                 disabled={loading || (!message.trim() && !selectedDoc)}
@@ -1160,8 +1151,8 @@ function App() {
                   <p className="modal-subtitle">Real-time inference engines, local runtimes & theme customizer</p>
                 </div>
               </div>
-              <button 
-                className="modal-close-btn" 
+              <button
+                className="modal-close-btn"
                 onClick={() => setIsModelModalOpen(false)}
                 title="Close Studio (Esc)"
               >
@@ -1205,8 +1196,8 @@ function App() {
                     </span>
                   </div>
                   <div className="detail-stat stat-action">
-                    <button 
-                      className="ping-btn" 
+                    <button
+                      className="ping-btn"
                       onClick={handlePingModel}
                       disabled={isPinging}
                       title="Ping Backend & Providers"
@@ -1316,7 +1307,7 @@ function App() {
                     <Icons.Palette />
                     <span>Workspace Visual Theme</span>
                   </div>
-                  <span className="studio-card-tag">7 High-Performance Themes</span>
+                  <span className="studio-card-tag">5 High-Performance Themes</span>
                 </div>
 
                 <div className="theme-selection-grid">
@@ -1356,8 +1347,8 @@ function App() {
               <span className="footer-status-text">
                 User ID: <code>{userId || "Initializing..."}</code>
               </span>
-              <button 
-                className="modal-done-btn" 
+              <button
+                className="modal-done-btn"
                 onClick={() => setIsModelModalOpen(false)}
               >
                 Apply & Close
