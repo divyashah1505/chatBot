@@ -9,9 +9,13 @@ from typing import Dict, Any, List, Optional
 from PIL import Image
 import numpy as np
 
+import warnings
+
 # Specialized libraries with graceful fallback
 try:
     from pypdf import PdfReader
+    from pypdf.errors import PdfReadWarning
+    warnings.filterwarnings("ignore", category=PdfReadWarning)
 except ImportError:
     PdfReader = None
 
@@ -150,7 +154,7 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
     pages_text = []
 
     try:
-        reader = PdfReader(io.BytesIO(file_bytes))
+        reader = PdfReader(io.BytesIO(file_bytes), strict=False)
         
         # 1. Handle password-encrypted PDFs (many software exports use empty password encryption)
         if getattr(reader, "is_encrypted", False):
