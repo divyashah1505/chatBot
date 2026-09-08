@@ -106,15 +106,69 @@ def extract_ocr_text_from_image(pil_img: Image.Image) -> str:
         return ""
 
 
+def extract_raw_pdf_streams(file_bytes: bytes) -> str:
+    """Pure-Python fallback to recover readable text strings from raw PDF streams."""
+    try:
+        found_chunks = []
+        tj_simple = re.compile(rb'\(([^()]{2,500})\)\s*(?:Tj|\'|")', re.DOTALL)
+        for m in tj_simple.finditer(file_bytes):
+            try:
+                txt = m.group(1).decode("latin-1", errors="ignore")
+                clean = re.sub(r'\\([0-9]{3}|.)', r'\1', txt).strip()
+                if clean and re.search(r'[a-zA-Z0-9]{2,}', clean):
+                    found_chunks.append(clean)
+            except Exception:
+                continue
+
+        tj_array = re.compile(rb'\[(.*?)\]\s*TJ', re.DOTALL)
+        for m in tj_array.finditer(file_bytes):
+            try:
+                inner = re.findall(rb'\(([^()]{2,500})\)', m.group(1))
+                line_parts = []
+                for b in inner:
+                    txt = b.decode("latin-1", errors="ignore")
+                    clean = re.sub(r'\\([0-9]{3}|.)', r'\1', txt).strip()
+                    if clean and re.search(r'[a-zA-Z0-9]', clean):
+                        line_parts.append(clean)
+                if line_parts:
+                    found_chunks.append(" ".join(line_parts))
+            except Exception:
+                continue
+
+        if found_chunks and len(found_chunks) >= 2:
+            return "\n".join(found_chunks).strip()
+    except Exception:
+        pass
+    return ""
+
+
 def extract_text_from_pdf(file_bytes: bytes) -> str:
     """Extracts all text from PDF bytes across all pages with page-level structural demarcation and OCR fallback."""
     if not PdfReader:
-        return ""
+        return extract_raw_pdf_streams(file_bytes)
+
+    pages_text = []
+
     try:
         reader = PdfReader(io.BytesIO(file_bytes))
-        pages_text = []
+        
+        # 1. Handle password-encrypted PDFs (many software exports use empty password encryption)
+        if getattr(reader, "is_encrypted", False):
+            try:
+                reader.decrypt("")
+            except Exception:
+                pass
 
-        # Genuine watermark filter list (case-insensitive)
+        # 2. Extract Interactive Form Fields (Crucial for insurance policies, tax/application forms)
+        try:
+            fields = reader.get_form_text_fields()
+            if fields:
+                form_lines = [f"{k}: {v}" for k, v in fields.items() if v and str(v).strip()]
+                if form_lines:
+                    pages_text.append("--- [Form Fields & Policy Details] ---\n" + "\n".join(form_lines))
+        except Exception:
+            pass
+
         ignored_watermark_phrases = {
             "draft", "confidential", "internal use only", "do not distribute",
             "watermark", "sample copy", "for review only"
@@ -122,7 +176,17 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
 
         for i, page in enumerate(reader.pages):
             page_num = i + 1
-            page_text = page.extract_text() or ""
+            
+            # Isolated per-page extraction with layout fallback
+            page_text = ""
+            try:
+                page_text = page.extract_text() or ""
+            except Exception:
+                try:
+                    page_text = page.extract_text(extraction_mode="layout") or ""
+                except Exception:
+                    page_text = ""
+
             lines = [l.strip() for l in page_text.splitlines() if l.strip()]
             
             # Filter only genuine solitary watermark stamps
@@ -132,6 +196,17 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
                 if l_lower in ignored_watermark_phrases:
                     continue
                 clean_lines.append(line)
+
+            # Extract any page annotation contents (sticky notes, callouts, textboxes)
+            try:
+                if "/Annots" in page:
+                    for annot in page["/Annots"]:
+                        annot_obj = annot.get_object()
+                        contents = annot_obj.get("/Contents")
+                        if contents and isinstance(contents, str) and contents.strip():
+                            clean_lines.append(contents.strip())
+            except Exception:
+                pass
 
             extracted_page_content = "\n".join(clean_lines).strip()
 
@@ -153,10 +228,18 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
             if extracted_page_content:
                 pages_text.append(f"--- [Page {page_num}] ---\n" + extracted_page_content)
 
-        return "\n\n".join(pages_text).strip()
+        full_extracted = "\n\n".join(pages_text).strip()
+        if full_extracted and len(full_extracted) > 30:
+            return full_extracted
     except Exception as e:
         print(f"[DocParser] PDF read error: {e}")
-        return ""
+
+    # Fallback: Recover strings from raw PDF streams directly
+    fallback_text = extract_raw_pdf_streams(file_bytes)
+    if fallback_text and len(fallback_text) > 30:
+        return fallback_text
+
+    return "\n\n".join(pages_text).strip()
 
 
 def extract_text_from_docx(file_bytes: bytes) -> str:
