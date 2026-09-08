@@ -1,14 +1,138 @@
 /* ==========================================================================
    DESIGN TOKENS & MULTI-THEME ENGINE (Divya AI Workspace)
    Supported Themes:
-   - obsidian: Obsidian Aurora (Default, Best Theme - Linear/Perplexity inspired)
+   - mocha:    Mocha & Cream (Default: Warm Porcelain White & Rich Roasted Brown)
+   - espresso: Velvet Espresso (Deep Roasted Chocolate & Crisp Pure White)
+   - daylight: Pristine Studio (Clean Minimalist Daylight Mode)
+   - obsidian: Obsidian Aurora (Velvet Onyx & Cyan-Indigo Aurora)
    - sapphire: Midnight Sapphire (Deep Navy & Electric Sapphire)
    - emerald:  Cyber Emerald (Matrix Carbon & Luminous Emerald)
    - amethyst: Nebula Amethyst (Velvet Cosmic Violet & Lavender)
-   - daylight: Pristine Studio (Clean Minimalist Daylight Mode)
    ========================================================================== */
 
+/* ==========================================================================
+   THEME 1 (DEFAULT): MOCHA & CREAM (BROWN & WHITE)
+   Warm porcelain alabaster canvas, rich dark roast espresso typography,
+   warm chocolate cards, hazelnut user bubbles, and golden caramel accents.
+   ========================================================================== */
 :root,
+[data-theme="mocha"] {
+  --font-main: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Canvas & Backgrounds (Crisp Warm Porcelain White & Ivory) */
+  --bg-canvas: #faf6f0;
+  --bg-surface: #ffffff;
+  --bg-elevated: #f3ece2;
+  --bg-card: rgba(255, 255, 255, 0.95);
+  --bg-card-hover: #ffffff;
+  --bg-sidebar: #f6f0e7;
+  --bg-header: rgba(250, 246, 240, 0.94);
+  --bg-composer: #ffffff;
+  --bg-modal-overlay: rgba(46, 30, 20, 0.48);
+  --bg-modal: #ffffff;
+
+  /* Accent & Gradients (Rich Warm Chocolate & Roasted Hazelnut) */
+  --accent-primary: #6d422a;
+  --accent-secondary: #9c5e35;
+  --accent-hover: #54311e;
+  --accent-gradient: linear-gradient(135deg, #54311e 0%, #6d422a 50%, #9c5e35 100%);
+  --accent-gradient-hover: linear-gradient(135deg, #402313 0%, #54311e 50%, #824b27 100%);
+  --accent-subtle: rgba(109, 66, 42, 0.09);
+  --accent-border: rgba(109, 66, 42, 0.25);
+  --accent-glow: 0 0 24px rgba(109, 66, 42, 0.2);
+  --accent-strong-glow: 0 10px 30px rgba(109, 66, 42, 0.32);
+
+  /* Borders & Dividers */
+  --border-subtle: #ede2d5;
+  --border-default: #dfd0bf;
+  --border-strong: #beaa94;
+
+  /* Typography */
+  --text-primary: #2b180d;
+  --text-secondary: #5f4231;
+  --text-muted: #8d705d;
+  --text-accent: #6d422a;
+  --text-inverse: #ffffff;
+
+  /* Messages */
+  --user-msg-bg: linear-gradient(135deg, #4d2b17 0%, #6d422a 60%, #8c522e 100%);
+  --user-msg-text: #ffffff;
+  --bot-msg-bg: #ffffff;
+  --bot-msg-border: #e3d5c5;
+
+  /* Status Colors */
+  --status-online: #10b981;
+  --status-online-glow: 0 0 12px rgba(16, 185, 129, 0.5);
+  --status-offline: #a3653b;
+  --status-error: #ef4444;
+  --status-warning: #d97706;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(43, 24, 13, 0.06);
+  --shadow-md: 0 6px 20px rgba(43, 24, 13, 0.08);
+  --shadow-lg: 0 14px 36px rgba(43, 24, 13, 0.12);
+}
+
+/* ==========================================================================
+   THEME 2: VELVET ESPRESSO (DEEP ROAST BROWN & WHITE)
+   Deep dark roasted cocoa canvas with crisp pure white text, ivory cards,
+   warm latte accents, and golden caramel glows.
+   ========================================================================== */
+[data-theme="espresso"] {
+  --font-main: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --bg-canvas: #160f0a;
+  --bg-surface: #1e150f;
+  --bg-elevated: #281d15;
+  --bg-card: rgba(30, 21, 15, 0.85);
+  --bg-card-hover: rgba(40, 29, 21, 0.95);
+  --bg-sidebar: rgba(18, 12, 8, 0.97);
+  --bg-header: rgba(22, 15, 10, 0.9);
+  --bg-composer: rgba(30, 21, 15, 0.9);
+  --bg-modal-overlay: rgba(10, 6, 4, 0.8);
+  --bg-modal: #1e150f;
+
+  --accent-primary: #c48b5c;
+  --accent-secondary: #e2aa7d;
+  --accent-hover: #d69b6a;
+  --accent-gradient: linear-gradient(135deg, #7c482c 0%, #b06e40 50%, #d49a68 100%);
+  --accent-gradient-hover: linear-gradient(135deg, #6a3b22 0%, #995c32 50%, #c48b5c 100%);
+  --accent-subtle: rgba(196, 139, 92, 0.14);
+  --accent-border: rgba(196, 139, 92, 0.32);
+  --accent-glow: 0 0 25px rgba(196, 139, 92, 0.35);
+  --accent-strong-glow: 0 10px 35px rgba(196, 139, 92, 0.5);
+
+  --border-subtle: rgba(226, 170, 125, 0.1);
+  --border-default: rgba(226, 170, 125, 0.18);
+  --border-strong: rgba(226, 170, 125, 0.3);
+
+  --text-primary: #ffffff;
+  --text-secondary: #eadecf;
+  --text-muted: #aa9786;
+  --text-accent: #e2aa7d;
+  --text-inverse: #160f0a;
+
+  --user-msg-bg: linear-gradient(135deg, #6b3d24 0%, #875132 60%, #ae6c3f 100%);
+  --user-msg-text: #ffffff;
+  --bot-msg-bg: rgba(30, 21, 15, 0.88);
+  --bot-msg-border: rgba(196, 139, 92, 0.24);
+
+  --status-online: #10b981;
+  --status-online-glow: 0 0 12px rgba(16, 185, 129, 0.6);
+  --status-offline: #c48b5c;
+  --status-error: #ef4444;
+  --status-warning: #f59e0b;
+
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.65);
+}
+
+/* ==========================================================================
+   THEME 3: OBSIDIAN AURORA
+   ========================================================================== */
 [data-theme="obsidian"] {
   --font-main: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
@@ -66,6 +190,7 @@
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
   --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6);
 }
+
 
 /* ==========================================================================
    THEME 2: MIDNIGHT SAPPHIRE

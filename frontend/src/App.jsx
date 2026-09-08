@@ -212,13 +212,15 @@ const Icons = {
   )
 };
 
-// Curated 5 Designer Themes
+// Curated Designer Themes
 const THEMES = [
-  { id: "obsidian", name: "Obsidian Aurora", tag: "Best Theme", desc: "Velvet onyx with cyan-indigo aurora glow", icon: "✨", color: "#3b82f6" },
+  { id: "mocha", name: "Mocha & Cream", tag: "Brown & White", desc: "Warm porcelain white with rich chocolate espresso", icon: "☕", color: "#6d422a" },
+  { id: "espresso", name: "Velvet Espresso", tag: "Deep Brown", desc: "Roasted dark walnut with crisp white contrast", icon: "🤎", color: "#b06e40" },
+  { id: "daylight", name: "Pristine Daylight", tag: "Light Studio", desc: "Clean porcelain studio with crisp contrast", icon: "☀️", color: "#0284c7" },
+  { id: "obsidian", name: "Obsidian Aurora", tag: "Classic Dark", desc: "Velvet onyx with cyan-indigo aurora glow", icon: "✨", color: "#3b82f6" },
   { id: "sapphire", name: "Midnight Sapphire", tag: "Deep Navy", desc: "Oceanic navy with royal sapphire accents", icon: "🌌", color: "#2563eb" },
   { id: "emerald", name: "Cyber Emerald", tag: "High-Tech", desc: "Deep carbon with luminous cyber emerald", icon: "⚡", color: "#10b981" },
-  { id: "amethyst", name: "Nebula Amethyst", tag: "Cosmic", desc: "Royal twilight with vibrant violet & lavender", icon: "🔮", color: "#8b5cf6" },
-  { id: "daylight", name: "Pristine Daylight", tag: "Light Studio", desc: "Clean porcelain studio with crisp contrast", icon: "☀️", color: "#0284c7" }
+  { id: "amethyst", name: "Nebula Amethyst", tag: "Cosmic", desc: "Royal twilight with vibrant violet & lavender", icon: "🔮", color: "#8b5cf6" }
 ];
 
 // Interactive Code Block with Language Tag and Copy Code Action
@@ -349,8 +351,15 @@ function App() {
   const [currentSessionId, setCurrentSessionId] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  // Theme & Model Studio state
-  const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem("divya_theme") || "obsidian");
+  // Theme & Model Studio state (Default: Mocha & Cream - Brown & White)
+  const [currentTheme, setCurrentTheme] = useState(() => {
+    const saved = localStorage.getItem("divya_theme");
+    if (!saved || saved === "obsidian") {
+      localStorage.setItem("divya_theme", "mocha");
+      return "mocha";
+    }
+    return saved;
+  });
   const [isModelModalOpen, setIsModelModalOpen] = useState(false);
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
   const [pingLatency, setPingLatency] = useState(null);
@@ -1307,7 +1316,7 @@ function App() {
                     <Icons.Palette />
                     <span>Workspace Visual Theme</span>
                   </div>
-                  <span className="studio-card-tag">5 High-Performance Themes</span>
+                  <span className="studio-card-tag">7 High-Performance Themes</span>
                 </div>
 
                 <div className="theme-selection-grid">
