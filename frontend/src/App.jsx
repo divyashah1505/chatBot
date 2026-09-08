@@ -3,6 +3,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import "./App.css";
 
+const API_BASE_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+
 const generateUserId = () => {
   return "user_" + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 };
@@ -393,7 +395,7 @@ function App() {
 
   const fetchModelStatus = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/models/status");
+      const res = await fetch(`${API_BASE_URL}/api/models/status`);
       if (res.ok) {
         const data = await res.json();
         setModelStatus(data);
@@ -465,7 +467,7 @@ function App() {
 
   const fetchSessions = async (uid) => {
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/sessions/${uid}`);
+      const res = await fetch(`${API_BASE_URL}/api/sessions/${uid}`);
       if (res.ok) {
         const data = await res.json();
         setSessions(data);
@@ -481,7 +483,7 @@ function App() {
     setMessages([]);
     setLoading(true);
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/sessions/${userId}/${sessionId}`);
+      const res = await fetch(`${API_BASE_URL}/api/sessions/${userId}/${sessionId}`);
       if (res.ok) {
         const data = await res.json();
         const loadedMessages = data.messages.map(m => ({ ...m, isNew: false }));
@@ -504,7 +506,7 @@ function App() {
   const handleDeleteSession = async (e, sessionId) => {
     e.stopPropagation();
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/sessions/${sessionId}`, {
+      const res = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}`, {
         method: "DELETE"
       });
       if (res.ok) {
@@ -598,7 +600,7 @@ function App() {
       if (currentSessionId) formData.append("session_id", currentSessionId);
 
       try {
-        const res = await fetch("http://127.0.0.1:8000/api/summarize-document", {
+        const res = await fetch(`${API_BASE_URL}/api/summarize-document`, {
           method: "POST",
           body: formData,
         });
@@ -626,7 +628,7 @@ function App() {
     setMessages((prev) => [...prev, { sender: "user", text: currentMessage, isNew: false }]);
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/chat", {
+      const response = await fetch(`${API_BASE_URL}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId, message: currentMessage, session_id: currentSessionId })
