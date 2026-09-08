@@ -45,7 +45,20 @@ def get_ocr_engine():
 
 
 def extract_ocr_text_from_image(pil_img: Image.Image) -> str:
-    """Runs local neural OCR on a PIL image with spatial line clustering."""
+    """Runs local neural OCR on a PIL image with spatial line clustering and memory-safe downsampling."""
+    # 1. Skip tiny icons, stamps, or slices (< 100px) to conserve RAM
+    w, h = pil_img.size
+    if w < 100 or h < 100:
+        return ""
+
+    # 2. Downsample large high-res scans (e.g. 4000x3000 -> 1200 max dim)
+    # This prevents Out-Of-Memory (OOM 512MB) crashes on Render
+    MAX_DIM = 1200
+    if max(w, h) > MAX_DIM:
+        scale = MAX_DIM / float(max(w, h))
+        new_w, new_h = max(1, int(w * scale)), max(1, int(h * scale))
+        pil_img = pil_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
     engine = get_ocr_engine()
     if not engine:
         return ""
@@ -180,6 +193,9 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
 
         for i, page in enumerate(reader.pages):
             page_num = i + 1
+            if page_num > 35:
+                pages_text.append("--- [Document continues: First 35 pages indexed for cloud performance] ---")
+                break
             
             # Isolated per-page extraction with layout fallback
             page_text = ""
@@ -217,14 +233,17 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
             # If page text is empty or very sparse (< 40 chars), check for scanned images on the page
             if len(extracted_page_content) < 40 and hasattr(page, "images") and len(page.images) > 0:
                 ocr_page_parts = []
-                for img_obj in page.images:
-                    try:
+                try:
+                    # Filter for substantial images (> 5KB) and sort to pick only the largest primary page scan
+                    img_list = [img for img in page.images if hasattr(img, "data") and len(img.data) > 5000]
+                    img_list.sort(key=lambda img: len(img.data), reverse=True)
+                    for img_obj in img_list[:1]:
                         pil_img = Image.open(io.BytesIO(img_obj.data))
                         ocr_txt = extract_ocr_text_from_image(pil_img)
                         if ocr_txt and len(ocr_txt) > len(extracted_page_content):
                             ocr_page_parts.append(ocr_txt)
-                    except Exception as e:
-                        print(f"[DocParser] PDF image extraction error on page {page_num}: {e}")
+                except Exception as e:
+                    print(f"[DocParser] PDF image extraction error on page {page_num}: {e}")
                 
                 if ocr_page_parts:
                     extracted_page_content = "\n".join(ocr_page_parts).strip()

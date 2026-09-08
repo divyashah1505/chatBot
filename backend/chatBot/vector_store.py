@@ -4,6 +4,7 @@ Provides page-aware chunking, vector indexing, exact entity boosting,
 and cosine-similarity retrieval using in-memory TF-IDF and numpy / scikit-learn without any network calls.
 """
 
+import os
 import re
 import numpy as np
 from typing import List, Dict, Any, Optional, Set
@@ -140,8 +141,14 @@ def chunk_document_text(
 _GLOBAL_EMBED_MODEL = None
 
 def get_neural_embedding_model():
-    """Lazily loads local fast ONNX neural embedding model (BAAI/bge-small-en-v1.5)."""
+    """Lazily loads local fast ONNX neural embedding model (BAAI/bge-small-en-v1.5).
+    Safely bypassed on constrained cloud servers (Render 512MB RAM) to prevent OOM termination.
+    """
     global _GLOBAL_EMBED_MODEL
+    # Render free plan limit is 512MB; TF-IDF uses <5MB RAM and runs 100% reliably
+    if os.getenv("RENDER") or os.getenv("DISABLE_FASTEMBED", "0") == "1":
+        return None
+
     if _GLOBAL_EMBED_MODEL is None:
         try:
             from fastembed import TextEmbedding
