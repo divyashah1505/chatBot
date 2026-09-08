@@ -28,14 +28,16 @@ from db.models import (
 app = FastAPI(title="Company Owner AI Assistant Backend")
 
 
-# CORS configuration
+# CORS configuration - allows any other website (e.g. localhost:3000, live server, or custom domains) to connect
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "*"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_origin_regex=r"^https?://.*",
 )
+
 
 
 @app.on_event("startup")
@@ -68,6 +70,13 @@ class CandidateCreateRequest(BaseModel):
 @app.get("/")
 async def home():
     return {"message": "AI Assistant Backend is running!"}
+
+
+@app.get("/api/health")
+async def health_check():
+    """Health check endpoint for external websites to verify API status."""
+    return {"status": "ok", "service": "ChatBot API", "version": "1.0.0"}
+
 
 
 @app.get("/api/models/status")
@@ -284,3 +293,9 @@ async def upload_candidate_cv(file: UploadFile = File(...)):
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+if __name__ == "__main__":
+    import uvicorn
+    # Host on 0.0.0.0 so other devices on local network or local ports can access it
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
